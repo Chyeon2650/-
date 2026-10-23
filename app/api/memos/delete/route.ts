@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isMemoId, readJsonObject } from "@/lib/apiValidation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { isFourDigitPassword, verifyPassword } from "@/lib/password";
 
@@ -6,8 +7,8 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    if (typeof body.id !== "string" || !isFourDigitPassword(body.password)) {
+    const body = await readJsonObject(request);
+    if (!isMemoId(body.id) || !isFourDigitPassword(body.password)) {
       return NextResponse.json(
         { error: "메모와 숫자 4자리 비밀번호를 확인해 주세요." },
         { status: 400 },
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("POST /api/memos/delete", error);
     return NextResponse.json(
       { error: "메모를 삭제하지 못했습니다." },

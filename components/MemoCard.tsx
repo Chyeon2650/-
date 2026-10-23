@@ -78,6 +78,8 @@ export default function MemoCard({
                 <button
                   type="button"
                   onClick={() => {
+                    setPassword("");
+                    setError("");
                     setMenuOpen(false);
                     setDeleteOpen(true);
                   }}
@@ -134,6 +136,7 @@ export default function MemoCard({
                 </span>
                 <input
                   autoFocus
+                  type="password"
                   value={password}
                   onChange={(event) =>
                     setPassword(event.target.value.replace(/\D/g, "").slice(0, 4))

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MINDLET · Instant Board",
-  description: "생각을 가볍게 붙여 두는 개인용 메모 보드",
+  title: "청현 · 메모 보드",
+  description: "생각을 가볍게 붙이고 함께 나누는 청현 메모 보드",
 };
 
 export default function RootLayout({

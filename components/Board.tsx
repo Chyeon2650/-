@@ -17,6 +17,7 @@ export default function Board() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [syncing, setSyncing] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   const notify = useCallback(
@@ -31,78 +32,57 @@ export default function Board() {
   );
 
   const loadMemos = useCallback(
-    async (showSuccess = false) => {
+    async (showSuccess = false, signal?: AbortSignal) => {
       setSyncing(true);
       try {
         const supabase = getSupabaseBrowserClient();
-        const { data, error } = await supabase
+        const query = supabase
           .from("memos")
           .select("id,title,content,created_at")
           .order("created_at", { ascending: false });
+        const { data, error } = await (signal ? query.abortSignal(signal) : query);
 
+        if (signal?.aborted) return false;
         if (error) throw error;
         setMemos((data ?? []) as Memo[]);
+        setLoadError(false);
         if (showSuccess) notify("최신 메모로 동기화했습니다.", "success");
+        return true;
       } catch (caught) {
+        if (signal?.aborted) return false;
         console.error(caught);
+        setLoadError(true);
         notify(
-          "Supabase 연결을 확인해 주세요. 환경 변수와 schema.sql 적용이 필요합니다.",
+          "메모를 불러오지 못했습니다. 잠시 후 동기화 버튼으로 다시 시도해 주세요.",
           "error",
         );
+        return false;
       } finally {
-        setSyncing(false);
+        if (!signal?.aborted) setSyncing(false);
       }
     },
     [notify],
   );
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) void loadMemos(false, controller.signal);
+    });
 
-    try {
-      const supabase = getSupabaseBrowserClient();
-      void supabase
-        .from("memos")
-        .select("id,title,content,created_at")
-        .order("created_at", { ascending: false })
-        .then(({ data, error }) => {
-          if (!active) return;
-          if (error) {
-            console.error(error);
-            notify(
-              "Supabase 연결을 확인해 주세요. 환경 변수와 schema.sql 적용이 필요합니다.",
-              "error",
-            );
-          } else {
-            setMemos((data ?? []) as Memo[]);
-          }
-          setSyncing(false);
-        });
-    } catch (caught) {
-      console.error(caught);
-      queueMicrotask(() => {
-        if (!active) return;
-        setSyncing(false);
-        notify(
-          "Supabase 연결을 확인해 주세요. 환경 변수와 schema.sql 적용이 필요합니다.",
-          "error",
-        );
-      });
-    }
-
-    void fetch("/api/admin/session")
+    void fetch("/api/admin/session", { signal: controller.signal, cache: "no-store" })
       .then((response) => response.json())
       .then((result) => {
-        if (active) setIsAdmin(Boolean(result.isAdmin));
+        if (!controller.signal.aborted) setIsAdmin(Boolean(result.isAdmin));
       })
       .catch(() => {
-        if (active) setIsAdmin(false);
+        if (!controller.signal.aborted) setIsAdmin(false);
       });
 
     return () => {
-      active = false;
+      controller.abort();
     };
-  }, [notify]);
+  }, [loadMemos]);
 
   const filteredMemos = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("ko");
@@ -115,21 +95,18 @@ export default function Board() {
   }, [memos, search]);
 
   async function afterCreate() {
-    await loadMemos();
-    notify("새 메모를 붙였습니다.", "success");
+    if (await loadMemos()) notify("새 메모를 붙였습니다.", "success");
   }
 
   async function afterDelete(message: string) {
-    await loadMemos();
-    notify(message, "success");
+    if (await loadMemos()) notify(message, "success");
   }
 
   async function deleteAll() {
     const response = await fetch("/api/admin/delete-all", { method: "POST" });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "전체 삭제에 실패했습니다.");
-    await loadMemos();
-    notify("모든 메모를 삭제했습니다.", "success");
+    if (await loadMemos()) notify("모든 메모를 삭제했습니다.", "success");
   }
 
   async function share() {
@@ -164,6 +141,19 @@ export default function Board() {
           />
         </label>
 
+        {loadError && (
+          <p role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+            메모를 불러오지 못했습니다. 동기화 버튼으로 다시 시도해 주세요.
+          </p>
+        )}
+        {!syncing && !loadError && filteredMemos.length === 0 && (
+          <p role="status" className="py-20 text-center text-sm text-slate-500">
+            {search.trim() ? "검색 결과가 없습니다." : "아직 메모가 없습니다. + 버튼으로 첫 생각을 붙여 보세요."}
+          </p>
+        )}
+        {syncing && memos.length === 0 && (
+          <p role="status" className="py-20 text-center text-sm text-slate-500">메모를 불러오는 중입니다.</p>
+        )}
         {filteredMemos.length > 0 && (
           <section className="memo-grid" aria-label="메모 목록">
             {filteredMemos.map((memo, index) => (

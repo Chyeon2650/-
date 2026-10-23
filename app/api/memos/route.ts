@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getSupabaseServerAnon } from "@/lib/supabaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { readJsonObject } from "@/lib/apiValidation";
 import { hashPassword, isFourDigitPassword } from "@/lib/password";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await readJsonObject(request);
     const title = typeof body.title === "string" ? body.title.trim() : "";
     const content = typeof body.content === "string" ? body.content.trim() : "";
 
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await hashPassword(body.password);
-    const supabase = getSupabaseServerAnon();
+    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("memos")
       .insert({ title, content, password_hash: passwordHash })
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
     if (error) throw error;
     return NextResponse.json({ memo: data }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("POST /api/memos", error);
     return NextResponse.json(
       { error: "메모를 저장하지 못했습니다." },

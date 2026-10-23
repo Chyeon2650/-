@@ -21,6 +21,11 @@ export default function MemoFormModal({
   if (!open) return null;
 
   function closeAndReset() {
+    if (submitting) return;
+    resetAndClose();
+  }
+
+  function resetAndClose() {
     setTitle("");
     setContent("");
     setPassword("");
@@ -30,6 +35,7 @@ export default function MemoFormModal({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     setError("");
 
     if (!title.trim() || !content.trim()) {
@@ -52,7 +58,7 @@ export default function MemoFormModal({
       if (!response.ok) throw new Error(result.error ?? "메모를 저장하지 못했습니다.");
 
       await onCreated();
-      closeAndReset();
+      resetAndClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "메모를 저장하지 못했습니다.");
     } finally {
@@ -69,7 +75,7 @@ export default function MemoFormModal({
       }}
     >
       <div
-        className="w-full rounded-t-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-2xl sm:p-6"
+        className="max-h-[100dvh] w-full overflow-y-auto rounded-t-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:max-w-lg sm:rounded-2xl sm:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="memo-form-title"
@@ -77,7 +83,7 @@ export default function MemoFormModal({
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold tracking-[0.18em] text-sky-600">
-              NEW MINDLET
+              청현 · 새 메모
             </p>
             <h2 id="memo-form-title" className="mt-1 text-xl font-semibold">
               생각 붙이기
@@ -121,6 +127,7 @@ export default function MemoFormModal({
               삭제 비밀번호
             </span>
             <input
+              type="password"
               value={password}
               onChange={(event) =>
                 setPassword(event.target.value.replace(/\D/g, "").slice(0, 4))

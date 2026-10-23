@@ -46,10 +46,18 @@ export default function AdminPanel({
 
   async function logout() {
     setLoading(true);
-    await fetch("/api/admin/logout", { method: "POST" });
-    setLoading(false);
-    onAuthChanged(false, "관리자 모드를 종료했습니다.");
-    onClose();
+    setError("");
+    try {
+      const response = await fetch("/api/admin/logout", { method: "POST" });
+      if (!response.ok) throw new Error("로그아웃하지 못했습니다.");
+      setConfirmAll(false);
+      onAuthChanged(false, "관리자 모드를 종료했습니다.");
+      onClose();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "로그아웃하지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function deleteAll() {
@@ -67,11 +75,11 @@ export default function AdminPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/25 backdrop-blur-[2px]">
-      <div className="h-full w-full max-w-md border-l border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
+      <div className="h-full w-full max-w-md overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold tracking-[0.18em] text-sky-600">
-              MINDLET ADMIN
+              청현 · 관리자
             </p>
             <h2 className="mt-1 text-xl font-semibold">관리자 패널</h2>
           </div>
@@ -101,6 +109,7 @@ export default function AdminPanel({
               <input
                 autoFocus
                 type="password"
+                maxLength={72}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
@@ -123,6 +132,9 @@ export default function AdminPanel({
           </form>
         ) : (
           <div className="mt-8 space-y-4">
+            {error && !confirmAll && (
+              <p role="alert" className="text-sm text-rose-700">{error}</p>
+            )}
             <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
               <div className="flex items-center gap-2 font-semibold text-sky-800">
                 <ShieldCheck className="h-5 w-5" />

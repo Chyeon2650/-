@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isMemoId, readJsonObject } from "@/lib/apiValidation";
 import { isAdminRequest } from "@/lib/adminSession";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -10,8 +11,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
-    if (typeof body.id !== "string") {
+    const body = await readJsonObject(request);
+    if (!isMemoId(body.id)) {
       return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
     }
 
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("POST /api/admin/delete", error);
     return NextResponse.json(
       { error: "메모를 강제 삭제하지 못했습니다." },

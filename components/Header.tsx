@@ -36,10 +36,10 @@ export default function Header({
           </div>
           <div className="mt-0.5 flex items-baseline gap-2">
             <h1 className="truncate text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">
-              MINDLET
+              청현
             </h1>
             <p className="hidden text-sm text-slate-500 md:block">
-              개인용 메모 보드
+              함께 나누는 메모 보드
             </p>
           </div>
         </div>
@@ -47,6 +47,7 @@ export default function Header({
         <label className="relative hidden w-full max-w-xs md:block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
+            aria-label="메모 검색"
             value={search}
             onChange={(event) => onSearch(event.target.value)}
             placeholder="메모 검색"
